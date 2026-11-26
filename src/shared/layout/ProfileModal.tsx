@@ -1,4 +1,4 @@
-﻿import { useEffect, useMemo, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { Link, useNavigate } from 'react-router-dom';
 import {
@@ -96,6 +96,19 @@ export default function ProfileModal({ isOpen, user, onClose, onUserChange }: Pr
   const [libraryLoading, setLibraryLoading] = useState(false);
   const [busy, setBusy] = useState(false);
 
+  const roleDirtyRef = useRef(false);
+  const pickRole = (next: UserRole) => {
+    roleDirtyRef.current = next !== user?.role;
+    setRole(next);
+  };
+
+  // Si le superviseur (ou un autre appareil) change le rôle pendant que la modale est
+  // ouverte, on resynchronise silencieusement tant que l'utilisateur n'a pas touché au choix.
+  useEffect(() => {
+    if (!isOpen || !user?.role) return;
+    if (!roleDirtyRef.current) setRole(user.role);
+  }, [isOpen, user?.role]);
+
   const isSupervisor = role === 'supervisor';
   const isCreator = role === 'creator' || role === 'both';
 
@@ -119,6 +132,7 @@ export default function ProfileModal({ isOpen, user, onClose, onUserChange }: Pr
     setFavoriteGenres(user?.favoriteGenres ?? []);
     setPreferredLanguage(user?.preferredLanguage ?? 'English');
     setRole(user?.role ?? 'reader');
+    roleDirtyRef.current = false;
     setPenName(user?.penName ?? '');
     setPortfolioUrl(user?.portfolioUrl ?? '');
     setSpecialization(user?.specialization ?? 'Writer');
@@ -392,36 +406,38 @@ export default function ProfileModal({ isOpen, user, onClose, onUserChange }: Pr
 
     setBusy(true);
 
-    if (!isSupervisor) {
-      const langResult = await updateUser(user.id, { preferredLanguage });
-      if (!langResult.success) {
+    const wantsRoleChange =
+      !isSupervisor &&
+      role !== user.role &&
+      (role === 'reader' || role === 'creator' || role === 'both');
+
+    let latest: User | null = null;
+
+    // Le rôle est enregistré en premier et indépendamment de la langue : un échec
+    // sur la langue ne doit jamais empêcher l'utilisateur de choisir son rôle.
+    if (wantsRoleChange) {
+      const roleResult = await updateOwnRole(role as 'reader' | 'creator' | 'both');
+      if (!roleResult.success || !roleResult.user) {
         setBusy(false);
-        setStatus({ type: 'error', text: langResult.message });
+        setStatus({ type: 'error', text: roleResult.message });
         return;
       }
+      latest = roleResult.user;
+      onUserChange(roleResult.user);
+    }
 
-      if (role !== user.role && (role === 'reader' || role === 'creator' || role === 'both')) {
-        const roleResult = await updateOwnRole(role);
-        setBusy(false);
-        if (!roleResult.success || !roleResult.user) {
-          setStatus({ type: 'error', text: roleResult.message });
-          return;
-        }
-        onUserChange(roleResult.user);
-      } else {
-        setBusy(false);
-        if (langResult.user) onUserChange(langResult.user);
-      }
-    } else {
+    if (preferredLanguage !== (latest?.preferredLanguage ?? user.preferredLanguage)) {
       const langResult = await updateUser(user.id, { preferredLanguage });
-      setBusy(false);
       if (!langResult.success) {
+        setBusy(false);
         setStatus({ type: 'error', text: langResult.message });
         return;
       }
       if (langResult.user) onUserChange(langResult.user);
     }
 
+    roleDirtyRef.current = false;
+    setBusy(false);
     setStatus({ type: 'success', text: t.profile.preferencesSaved });
   };
 
@@ -843,7 +859,7 @@ export default function ProfileModal({ isOpen, user, onClose, onUserChange }: Pr
                     <button
                       type="button"
                       className={`role-option ${role === 'reader' ? 'active' : ''}`}
-                      onClick={() => setRole('reader')}
+                      onClick={() => pickRole('reader')}
                       disabled={readOnly}
                       style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', textAlign: 'center', gap: '8px' }}
                     >
@@ -856,7 +872,7 @@ export default function ProfileModal({ isOpen, user, onClose, onUserChange }: Pr
                     <button
                       type="button"
                       className={`role-option ${role === 'creator' ? 'active' : ''}`}
-                      onClick={() => setRole('creator')}
+                      onClick={() => pickRole('creator')}
                       disabled={readOnly}
                       style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', textAlign: 'center', gap: '8px' }}
                     >
@@ -869,7 +885,7 @@ export default function ProfileModal({ isOpen, user, onClose, onUserChange }: Pr
                     <button
                       type="button"
                       className={`role-option ${role === 'both' ? 'active' : ''}`}
-                      onClick={() => setRole('both')}
+                      onClick={() => pickRole('both')}
                       disabled={readOnly}
                       style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', textAlign: 'center', gap: '8px' }}
                     >
