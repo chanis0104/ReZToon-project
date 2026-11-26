@@ -1,4 +1,4 @@
-﻿import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Users as UsersIcon, Search, X } from 'lucide-react';
 import Cursor from '../../../shared/effects/Cursor';
@@ -66,8 +66,9 @@ export default function SupervisorUsers() {
     if (user.role !== 'supervisor') navigate('/supervisor', { replace: true });
   }, [user, authLoading, navigate]);
 
+  // Rafraîchissement silencieux : le spinner n'apparaît qu'au premier chargement,
+  // pour ne pas faire clignoter la liste à chaque changement de rôle.
   const refreshUsers = useCallback(async () => {
-    setLoading(true);
     const list = await getUsers();
     setUsers(list);
     setLoading(false);
