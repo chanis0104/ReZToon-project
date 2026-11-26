@@ -1,4 +1,4 @@
-﻿﻿import { supabase } from '../lib/supabase';
+import { supabase } from '../lib/supabase';
 import { isNetworkError } from '../lib/connectivity';
 
 export type UserRole = 'reader' | 'creator' | 'both' | 'supervisor';
@@ -33,7 +33,6 @@ export interface User {
 export interface AuthResult {
   success: boolean;
   message: string;
-  /** 'network' : échec réseau/DNS (et non identifiants invalides). */
   code?: 'network';
   user?: User;
 }
@@ -64,6 +63,13 @@ function mapProfileToUser(data: any, authEmail: string): User {
     banUntil: data.ban_until ?? null,
     createdAt: data.created_at ?? undefined,
   };
+}
+
+/** PostgREST renvoie soit un objet (RPC), soit un tableau (update().select()), soit rien. */
+function firstRow(data: any): any | null {
+  if (!data) return null;
+  if (Array.isArray(data)) return data[0] ?? null;
+  return typeof data === 'object' ? data : null;
 }
 
 function isBanned(profile: any): boolean {
@@ -207,10 +213,6 @@ export async function registerUser(name: string, email: string, password: string
       return { success: false, message: 'An account with this email already exists.' };
     }
 
-    // Le profil est créé côté serveur par le trigger `on_auth_user_created`
-    // (voir supabase/migrations). Un insert client échouerait en RLS : pas de session
-    // tant que l'email n'est pas confirmé.
-
     return {
       success: true,
       message: `Account created for ${name}. Please check your email to confirm.`,
@@ -268,7 +270,6 @@ export async function updateUser(
     if (updates.portfolioUrl !== undefined) dbUpdates.portfolio_url = updates.portfolioUrl;
     if (updates.specialization !== undefined) dbUpdates.specialization = updates.specialization;
     if (updates.creatorBio !== undefined) dbUpdates.creator_bio = updates.creatorBio;
-    if (updates.currency !== undefined) dbUpdates.currency = updates.currency;
 
     if (Object.keys(dbUpdates).length === 0) {
       return { success: true, message: 'Nothing to update.', user: caller };
@@ -278,11 +279,14 @@ export async function updateUser(
       .from('profiles')
       .update(dbUpdates)
       .eq('id', id)
-      .select()
-      .single();
+      .select();
 
     if (error) return { success: false, message: error.message };
-    return { success: true, message: 'Profile updated.', user: mapProfileToUser(data, data.email) };
+    const row = firstRow(data);
+    if (!row) {
+      return { success: false, message: 'Profile update was not applied (permission denied).' };
+    }
+    return { success: true, message: 'Profile updated.', user: mapProfileToUser(row, row.email) };
   } catch (err: any) {
     return { success: false, message: err?.message || 'Update failed.' };
   }
@@ -310,11 +314,14 @@ export async function adminUpdateUser(
       .from('profiles')
       .update(dbUpdates)
       .eq('id', id)
-      .select()
-      .single();
+      .select();
 
     if (error) return { success: false, message: error.message };
-    return { success: true, message: 'User updated.', user: mapProfileToUser(data, data.email) };
+    const row = firstRow(data);
+    if (!row) {
+      return { success: false, message: 'Update was not applied (permission denied).' };
+    }
+    return { success: true, message: 'User updated.', user: mapProfileToUser(row, row.email) };
   } catch (err: any) {
     return { success: false, message: err?.message || 'Update failed.' };
   }
@@ -408,20 +415,38 @@ export async function updateOwnRole(
   role: 'reader' | 'creator' | 'both',
 ): Promise<AuthResult> {
   try {
-    const caller = await getCurrentUser();
-    if (!caller) return { success: false, message: 'Not authenticated.' };
-    if (caller.role === 'supervisor') {
-      return { success: false, message: 'Les superviseurs ne peuvent pas changer leur propre rôle.' };
-    }
     if (!['reader', 'creator', 'both'].includes(role)) {
       return { success: false, message: 'Invalid role.' };
     }
 
-    const { data, error } = await supabase.rpc('update_own_role', { new_role: role });
+    const { data: { session } } = await supabase.auth.getSession();
+    const uid = session?.user?.id;
+    if (!uid) return { success: false, message: 'Not authenticated.' };
 
-    if (error) return { success: false, message: error.message };
+    const { data: current } = await supabase.from('profiles').select('role').eq('id', uid).maybeSingle();
+    if (current?.role === 'supervisor') {
+      return { success: false, message: 'Les superviseurs ne peuvent pas changer leur propre rôle.' };
+    }
 
-    return { success: true, message: 'Role updated.', user: mapProfileToUser(data, data.email) };
+    let row: any = null;
+    const rpc = await supabase.rpc('update_own_role', { new_role: role });
+    if (!rpc.error) {
+      row = firstRow(rpc.data);
+    } else {
+      const direct = await supabase.from('profiles').update({ role }).eq('id', uid).select();
+      if (direct.error) return { success: false, message: direct.error.message };
+      row = firstRow(direct.data);
+    }
+
+    if (!row) {
+      const { data: fresh } = await supabase.from('profiles').select('*').eq('id', uid).maybeSingle();
+      row = fresh;
+    }
+    if (!row || row.role !== role) {
+      return { success: false, message: 'Role update was not applied.' };
+    }
+
+    return { success: true, message: 'Role updated.', user: mapProfileToUser(row, row.email) };
   } catch (err: any) {
     return { success: false, message: err?.message || 'Role update failed.' };
   }
