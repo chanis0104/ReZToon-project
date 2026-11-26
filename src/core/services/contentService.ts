@@ -1,4 +1,4 @@
-﻿import { supabase } from '../lib/supabase';
+import { supabase } from '../lib/supabase';
 import { createAutoReleasePost } from './communityService';
 import { clearMangaCache } from './mangaService';
 
@@ -100,7 +100,15 @@ export async function createSeries(
     })
     .select()
     .single();
-  if (error || !data) return null;
+  if (error || !data) {
+    console.error('[contentService] createSeries failed:', error?.code, error?.message);
+    if (error?.code === '42501' || (error as any)?.status === 403) {
+      throw new Error(
+        "Permission refusée par la base de données (RLS). Appliquez supabase/migrations/20261126_mangas_rls.sql.",
+      );
+    }
+    throw new Error(error?.message || 'Création impossible.');
+  }
   clearMangaCache();
   return mapSeries(data);
 }
