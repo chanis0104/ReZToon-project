@@ -1,4 +1,5 @@
-﻿import { supabase } from '../lib/supabase';
+import { supabase } from '../lib/supabase';
+import { explainDbError } from '../lib/dbError';
 
 export interface ChapterComment {
   id: string;
@@ -43,6 +44,7 @@ export async function getChapterComments(
     .eq('chapter_number', chapterNumber)
     .order('created_at', { ascending: true });
 
+  if (error) console.error('[chapterCommentService] getChapterComments :', error.code, error.message);
   if (error || !data) return [];
   return data.map(mapRow);
 }
@@ -76,7 +78,10 @@ export async function addChapterComment(
     .select('*')
     .single();
 
-  if (error || !data) return null;
+  if (error || !data) {
+    console.error('[chapterCommentService] addChapterComment :', error?.code, error?.message);
+    throw new Error(explainDbError(error, 'Impossible de publier le commentaire.'));
+  }
   return mapRow({ ...data, likes: [] });
 }
 
@@ -89,6 +94,7 @@ export async function deleteChapterComment(
     .delete()
     .eq('id', commentId)
     .eq('author_id', userId);
+  if (error) console.error('[chapterCommentService] deleteChapterComment :', error.code, error.message);
   return !error;
 }
 
@@ -103,17 +109,16 @@ export async function toggleCommentLike(
     .eq('user_id', userId)
     .maybeSingle();
 
-  if (data) {
-    await supabase
-      .from('chapter_comment_likes')
-      .delete()
-      .eq('comment_id', commentId)
-      .eq('user_id', userId);
-  } else {
-    await supabase
-      .from('chapter_comment_likes')
-      .insert({ comment_id: commentId, user_id: userId });
-  }
+  const { error } = data
+    ? await supabase
+        .from('chapter_comment_likes')
+        .delete()
+        .eq('comment_id', commentId)
+        .eq('user_id', userId)
+    : await supabase
+        .from('chapter_comment_likes')
+        .insert({ comment_id: commentId, user_id: userId });
+  if (error) throw new Error(explainDbError(error));
 }
 
 export async function getChapterCommentCount(
