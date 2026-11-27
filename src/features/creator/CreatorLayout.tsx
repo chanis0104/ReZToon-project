@@ -1,7 +1,8 @@
-﻿import { Link, Outlet, useLocation } from 'react-router-dom';
+import { Link, Outlet, useLocation } from 'react-router-dom';
 import {
   LayoutDashboard, BookPlus, Library, BarChart3,
-  ChevronLeft, PenTool, Trophy
+  ChevronLeft, PenTool, Trophy,
+  FileEdit,
 } from 'lucide-react';
 
 import Cursor from '../../shared/effects/Cursor';
@@ -32,6 +33,7 @@ export default function CreatorLayout() {
     { to: '/creator', label: t.creator.dashboard, icon: LayoutDashboard, end: true },
     { to: '/creator/new', label: t.creator.newChapter, icon: BookPlus, end: false },
     { to: '/creator/series', label: t.creator.mySeries, icon: Library, end: false },
+    { to: '/creator/chapters', label: t.creator.myChapters, icon: FileEdit, end: false },
     { to: '/creator/analytics', label: t.creator.analytics, icon: BarChart3, end: false },
   ];
 
