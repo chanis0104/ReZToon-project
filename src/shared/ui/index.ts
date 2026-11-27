@@ -9,4 +9,5 @@ export { default as Loader } from './Loader';
 export { default as MessagesSquareIcon } from './MessagesSquareIcon';
 export { default as OfflineBanner } from './OfflineBanner';
 export { default as PWAInstallBanner } from './PWAInstallBanner';
-export { default as ScrollTopButton } from './ScrollTopButton';
+export { default as ScrollTopButton } from './ScrollTopButton';export { default as CoverPicker } from './CoverPicker';
+export type { CoverPickerValue } from './CoverPicker';
