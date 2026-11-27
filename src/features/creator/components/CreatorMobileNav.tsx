@@ -1,5 +1,5 @@
 import { NavLink } from 'react-router-dom';
-import { LayoutDashboard, BookPlus, Library, BarChart3 } from 'lucide-react';
+import { LayoutDashboard, BookPlus, Library, BarChart3, FileEdit } from 'lucide-react';
 import { useT } from '../../../config/i18n';
 
 export default function CreatorMobileNav() {
@@ -9,6 +9,7 @@ export default function CreatorMobileNav() {
     { to: '/creator', icon: LayoutDashboard, end: true, title: t.creator.dashboard },
     { to: '/creator/new', icon: BookPlus, end: false, title: t.creator.newChapter },
     { to: '/creator/series', icon: Library, end: false, title: t.creator.mySeries },
+    { to: '/creator/chapters', icon: FileEdit, end: false, title: t.creator.myChapters },
     { to: '/creator/analytics', icon: BarChart3, end: false, title: t.creator.analytics },
   ];
 
