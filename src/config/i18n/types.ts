@@ -251,6 +251,8 @@ export interface TranslationSchema {
     dashboard: string;
     newChapter: string;
     mySeries: string;
+    myChapters: string;
+    myChaptersDesc: string;
     analytics: string;
     stats: string;
     recentSeries: string;
@@ -968,6 +970,40 @@ export interface TranslationSchema {
     errNumber: string;
     successPublished: string;
     successDraft: string;
+  };
+
+  coverForm: {
+    seriesLabel: string;
+    chapterLabel: string;
+    optional: string;
+    hint: string;
+    choose: string;
+    change: string;
+    remove: string;
+  };
+
+  chapterEdit: {
+    empty: string;
+    emptyDesc: string;
+    allSeries: string;
+    edit: string;
+    editTitle: string;
+    save: string;
+    saving: string;
+    saved: string;
+    number: string;
+    numberLocked: string;
+    statusLabel: string;
+    draft: string;
+    published: string;
+    currentPages: string;
+    addPages: string;
+    removePage: string;
+    pagesCount: string;
+    errPages: string;
+    errTitle: string;
+    uploadingPages: string;
+    newCover: string;
   };
 
   communityFeed: {
