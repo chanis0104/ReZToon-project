@@ -1,4 +1,4 @@
-﻿import { useMemo } from 'react';
+import { useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
   ChevronLeft, ChevronRight, Heart, Sparkles, Play, Bookmark, BookmarkCheck,
@@ -141,7 +141,11 @@ export default function MostLiked({
               </span>
 
               <div className="annonce-cover">
-                <IconCmp size={48} />
+                {book.coverUrl ? (
+                  <img className="cover-fill" src={book.coverUrl} alt="" loading="lazy" />
+                ) : (
+                  <IconCmp size={48} />
+                )}
                 <span className="annonce-genre">{book.genre}</span>
               </div>
 
