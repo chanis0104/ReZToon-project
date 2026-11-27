@@ -1,4 +1,4 @@
-﻿import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { Plus, Edit3, Trash2, Eye, BookOpen, Loader2, Users } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 
@@ -13,6 +13,11 @@ import type { Series, SeriesStatus } from '../../core/services/contentService';
 import { useGenres } from '../../core/hooks/useGenres';
 import { useT } from '../../config/i18n';
 import TeamPanel from '../collaboration/TeamPanel';
+import CoverPicker from '../../shared/ui/CoverPicker';
+import type { CoverPickerValue } from '../../shared/ui/CoverPicker';
+import { uploadCover } from '../../core/services/coverService';
+
+const NO_COVER: CoverPickerValue = { file: null, removed: false };
 
 const STATUSES: SeriesStatus[] = ['ongoing', 'hiatus', 'completed'];
 
@@ -37,6 +42,7 @@ export default function MySeries() {
   const [status, setStatus] = useState<SeriesStatus>('ongoing');
   const [error, setError] = useState<string | null>(null);
   const [teamSeriesId, setTeamSeriesId] = useState<string | null>(null);
+  const [cover, setCover] = useState<CoverPickerValue>(NO_COVER);
 
   const refresh = useCallback(async () => {
     if (!user) {
@@ -66,6 +72,7 @@ export default function MySeries() {
     setEditing(null);
     setShowForm(false);
     setError(null);
+    setCover(NO_COVER);
   };
 
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
@@ -82,12 +89,16 @@ export default function MySeries() {
     setError(null);
 
     try {
+      // Couverture facultative : téléversée seulement si l'utilisateur en a choisi une.
+      const uploadedCover = cover.file ? await uploadCover(cover.file, user.id, 'series') : undefined;
+
       if (editing) {
         const updated = await updateSeries(editing.id, user.id, {
           title: trimmedTitle,
           genre: effectiveGenre,
           description: description.trim(),
           status,
+          coverUrl: uploadedCover ?? (cover.removed ? null : undefined),
         });
         if (!updated) {
           setError(t.common.errUnexpected);
@@ -101,6 +112,7 @@ export default function MySeries() {
             genre: effectiveGenre,
             description: description.trim(),
             status,
+            coverUrl: uploadedCover,
           },
         );
         if (!created) {
@@ -126,6 +138,7 @@ export default function MySeries() {
     setStatus(s.status);
     setShowForm(true);
     setError(null);
+    setCover(NO_COVER);
   };
 
   const handleDelete = async (s: Series) => {
@@ -213,6 +226,15 @@ export default function MySeries() {
             <span className="creator-char-counter">{description.length}/400</span>
           </div>
 
+          <CoverPicker
+            label={t.coverForm.seriesLabel}
+            currentUrl={editing?.coverUrl}
+            value={cover}
+            onChange={setCover}
+            aspect="portrait"
+            disabled={isSubmitting}
+          />
+
           <div className="creator-form-group">
             <label>{t.creator.status}</label>
             <select
@@ -260,7 +282,11 @@ export default function MySeries() {
           {series.map((s) => (
             <article key={s.id} className="creator-series-card">
               <div className="creator-series-cover">
-                <BookOpen size={36} />
+                {s.coverUrl ? (
+                  <img className="cover-fill" src={s.coverUrl} alt="" loading="lazy" />
+                ) : (
+                  <BookOpen size={36} />
+                )}
               </div>
               <div className="creator-series-body">
                 <h3>{s.title}</h3>
