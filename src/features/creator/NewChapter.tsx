@@ -1,4 +1,4 @@
-﻿import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { Upload, Image as ImageIcon, Loader2, X } from 'lucide-react';
 import { supabase } from '../../core/lib/supabase';
 
@@ -6,6 +6,9 @@ import { useCurrentUser } from '../../core/hooks/useCurrentUser';
 import { createChapter, getSeriesByOwner } from '../../core/services/contentService';
 import type { Series } from '../../core/services/contentService';
 import { useT } from '../../config/i18n';
+import CoverPicker from '../../shared/ui/CoverPicker';
+import type { CoverPickerValue } from '../../shared/ui/CoverPicker';
+import { uploadCover } from '../../core/services/coverService';
 
 interface FileItem {
   file: File;
@@ -28,6 +31,7 @@ export default function NewChapter() {
   const [status, setStatus] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
 
   const [items, setItems] = useState<FileItem[]>([]);
+  const [cover, setCover] = useState<CoverPickerValue>({ file: null, removed: false });
 
   useEffect(() => {
     if (!user) {
@@ -129,6 +133,8 @@ export default function NewChapter() {
       });
 
       const pageUrls = await Promise.all(uploadPromises);
+      // Couverture du chapitre : facultative.
+      const coverUrl = cover.file ? await uploadCover(cover.file, user.id, 'chapter') : undefined;
 
       const result = await createChapter(
         { id: user.id, name: user.name },
@@ -140,10 +146,11 @@ export default function NewChapter() {
           status: publish ? 'published' : 'draft',
           publishDate,
           pageUrls,
+          coverUrl,
         },
       );
 
-      if (!result) throw new Error(t.creatorForm.errRequired);
+      if (!result.ok) throw new Error(result.message);
 
       const actionLabel = publish ? t.creatorForm.successPublished : t.creatorForm.successDraft;
 
@@ -157,6 +164,7 @@ export default function NewChapter() {
       setSummary('');
       setPublishDate('');
       setItems([]);
+      setCover({ file: null, removed: false });
     } catch (err: any) {
       setStatus({ type: 'error', text: err.message || t.common.errUnexpected });
     } finally {
@@ -226,6 +234,14 @@ export default function NewChapter() {
             <label>{t.creatorForm.publishDate}</label>
             <input type="date" value={publishDate} onChange={(e) => setPublishDate(e.target.value)} disabled={isSubmitting} />
           </div>
+
+          <CoverPicker
+            label={t.coverForm.chapterLabel}
+            value={cover}
+            onChange={setCover}
+            aspect="landscape"
+            disabled={isSubmitting}
+          />
 
           <div className="creator-form-group">
             <label>{t.creatorForm.pages} ({items.length} {t.creatorForm.selected})</label>
