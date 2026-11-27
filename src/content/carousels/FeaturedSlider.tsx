@@ -1,4 +1,4 @@
-﻿import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
   Play, ChevronLeft, ChevronRight, Bookmark, BookmarkCheck,
@@ -13,7 +13,6 @@ import { useT } from '../../config/i18n';
 interface FeaturedSliderProps {
   slides: FeaturedSlide[];
   autoPlayMs?: number;
-  /** Période du Top 5 affiché ; avec onPeriodChange, affiche le sélecteur Semaine / Mois. */
   period?: FeaturedPeriod;
   onPeriodChange?: (period: FeaturedPeriod) => void;
 }
@@ -195,7 +194,7 @@ export default function FeaturedSlider({
           return (
             <article
               key={s.id}
-              className={`featured-slide ${isActive ? 'active' : ''} ${isPrev ? 'leaving' : ''}`}
+              className={`featured-slide ${isActive ? 'active' : ''} ${isPrev ? 'leaving' : ''} ${s.coverUrl ? 'has-cover' : ''}`}
               aria-hidden={!isActive}
             >
               <div
@@ -279,6 +278,12 @@ export default function FeaturedSlider({
                     ))}
                   </div>
                 </div>
+
+                {s.coverUrl && (
+                  <div className="featured-poster" aria-hidden="true">
+                    <img src={s.coverUrl} alt="" loading={i === 0 ? 'eager' : 'lazy'} />
+                  </div>
+                )}
               </div>
             </article>
           );
