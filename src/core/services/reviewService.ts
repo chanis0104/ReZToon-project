@@ -1,5 +1,6 @@
-﻿import { supabase } from '../lib/supabase';
+import { supabase } from '../lib/supabase';
 import { clearMangaCache } from './mangaService';
+import { explainDbError } from '../lib/dbError';
 
 export type AuthorRole = 'reader' | 'creator' | 'both' | 'supervisor';
 
@@ -50,6 +51,7 @@ export async function getReviewsForManga(mangaId: string): Promise<Review[]> {
         .select('*, review_helpful(user_id)')
         .eq('manga_id', mangaId)
         .order('created_at', { ascending: false });
+    if (error) console.error('[reviewService] getReviewsForManga :', error.code, error.message);
     if (error || !data) return [];
     return data.map(mapRow);
 }
@@ -59,6 +61,7 @@ export async function getAllReviews(): Promise<Review[]> {
         .from('reviews')
         .select('*, review_helpful(user_id)')
         .order('created_at', { ascending: false });
+    if (error) console.error('[reviewService] getAllReviews :', error.code, error.message);
     if (error || !data) return [];
     return data.map(mapRow);
 }
@@ -104,7 +107,7 @@ export async function getUserReview(mangaId: string, userId: string): Promise<Re
 export async function addReview(
     author: { id: string; name: string; role: AuthorRole },
     payload: { mangaId: string; rating: number; title: string; content: string },
-): Promise<Review | null> {
+): Promise<Review> {
     const { data, error } = await supabase
         .from('reviews')
         .insert({
@@ -119,7 +122,10 @@ export async function addReview(
         .select('*')
         .single();
 
-    if (error || !data) return null;
+    if (error || !data) {
+        console.error('[reviewService] addReview :', error?.code, error?.message);
+        throw new Error(explainDbError(error, "Impossible de publier l'avis."));
+    }
 
     clearMangaCache();
 
@@ -130,7 +136,7 @@ export async function updateReview(
     reviewId: string,
     userId: string,
     updates: Partial<Pick<Review, 'rating' | 'title' | 'content'>>,
-): Promise<Review | null> {
+): Promise<Review> {
     const dbUpdates: Record<string, unknown> = {};
     if (updates.rating !== undefined) {
         dbUpdates.rating = Math.max(1, Math.min(5, Math.round(updates.rating)));
@@ -146,7 +152,10 @@ export async function updateReview(
         .select('*')
         .single();
 
-    if (error || !data) return null;
+    if (error || !data) {
+        console.error('[reviewService] updateReview :', error?.code, error?.message);
+        throw new Error(explainDbError(error, "Impossible de modifier l'avis."));
+    }
 
     clearMangaCache();
 
@@ -160,7 +169,10 @@ export async function deleteReview(reviewId: string, userId: string): Promise<bo
         .eq('id', reviewId)
         .eq('author_id', userId);
 
-    if (error) return false;
+    if (error) {
+        console.error('[reviewService] deleteReview :', error.code, error.message);
+        throw new Error(explainDbError(error, "Impossible de supprimer l'avis."));
+    }
 
     clearMangaCache();
 
@@ -175,17 +187,16 @@ export async function toggleHelpful(reviewId: string, userId: string): Promise<v
         .eq('user_id', userId)
         .maybeSingle();
 
-    if (data) {
-        await supabase
+    const { error } = data
+        ? await supabase
             .from('review_helpful')
             .delete()
             .eq('review_id', reviewId)
-            .eq('user_id', userId);
-    } else {
-        await supabase
+            .eq('user_id', userId)
+        : await supabase
             .from('review_helpful')
             .insert({ review_id: reviewId, user_id: userId });
-    }
+    if (error) throw new Error(explainDbError(error));
 }
 
 export function filterReviewsByRole(reviews: Review[], role: ReviewRoleFilter): Review[] {
