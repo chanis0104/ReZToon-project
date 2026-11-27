@@ -1,13 +1,15 @@
-﻿import type {
+import type {
     CatalogueCardData, GenreDescription, PopularCardData, LikedBookData, StatItem, FeaturedData, FooterData, LandingData,
 } from '../../config/types';
 import { getAllMangas } from './mangaService';
 
 export interface FeaturedSlide {
     id: string; badge: string; title: string; highlight: string; ageBadge: string; meta: string[]; rating: string; description: string; stats: { value: string; label: string }[]; image: string;
-    /** Position dans le Top 5 de la période (page d'accueil). */
+
+    coverUrl?: string;
+
     rank?: number;
-    /** true = classé sur les totaux de tous les temps (aucune activité sur la période). */
+
     allTime?: boolean;
 }
 
@@ -97,7 +99,7 @@ export function getFeatured(): FeaturedData {
 
 export async function getPopularCards(): Promise<PopularCardData[]> {
     const mangas = await getAllMangas();
-    return mangas.slice(0, 10).map(m => ({ id: m.id, title: m.title, sub: m.author, tag: m.tag || 'Series', icon: m.cover, genre: m.genre }));
+    return mangas.slice(0, 10).map(m => ({ id: m.id, title: m.title, sub: m.author, tag: m.tag || 'Series', icon: m.cover, coverUrl: m.coverUrl, genre: m.genre }));
 }
 
 export async function getFeaturedSlides(): Promise<FeaturedSlide[]> {
@@ -107,18 +109,18 @@ export async function getFeaturedSlides(): Promise<FeaturedSlide[]> {
         highlight: m.title.split(' ').slice(2).join(' ') || m.subtitle, ageBadge: '13+',
         meta: [m.genre, m.author, 'NEW'], rating: `★ ${m.rating.toFixed(1)}`, description: m.description,
         stats: [{ value: `${m.reads}`, label: 'READS' }, { value: `${m.chapters?.length || 0}`, label: 'CHAPTERS' }, { value: m.status.toUpperCase(), label: 'STATUS' }],
-        image: '/Images/1.jpeg'
+        image: '/Images/1.jpeg', coverUrl: m.coverUrl
     }));
 }
 
 export async function getAnnonceBooks(count = 20): Promise<PopularCardData[]> {
     const mangas = await getAllMangas();
-    return mangas.slice(0, count).map(m => ({ id: m.id, title: m.title, sub: m.author, tag: m.tag || 'Series', icon: m.cover, genre: m.genre }));
+    return mangas.slice(0, count).map(m => ({ id: m.id, title: m.title, sub: m.author, tag: m.tag || 'Series', icon: m.cover, coverUrl: m.coverUrl, genre: m.genre }));
 }
 
 export async function getMostLikedBooks(count = 12): Promise<LikedBookData[]> {
     const mangas = await getAllMangas();
     return mangas.slice().sort((a, b) => b.likes - a.likes).slice(0, count).map((m, i) => ({
-        id: m.id, title: m.title, sub: m.author, tag: m.tag || 'Series', icon: m.cover, genre: m.genre, likes: m.likes, rank: i + 1
+        id: m.id, title: m.title, sub: m.author, tag: m.tag || 'Series', icon: m.cover, coverUrl: m.coverUrl, genre: m.genre, likes: m.likes, rank: i + 1
     }));
 }
