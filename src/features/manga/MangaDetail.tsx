@@ -1,4 +1,4 @@
-﻿import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 import {
   ArrowLeft, Users, Home as HomeIcon, Heart, Star, Eye, BookOpen, Bookmark,
@@ -76,7 +76,7 @@ function StarPicker({ value, onChange }: { value: number; onChange: (v: number) 
 
 interface ReviewFormProps {
   initial?: Review | null;
-  onSubmit: (data: { rating: number; title: string; content: string }) => void;
+  onSubmit: (data: { rating: number; title: string; content: string }) => void | Promise<void>;
   onCancel?: () => void;
 }
 
@@ -86,14 +86,23 @@ function ReviewForm({ initial, onSubmit, onCancel }: ReviewFormProps) {
   const [title, setTitle] = useState(initial?.title ?? '');
   const [content, setContent] = useState(initial?.content ?? '');
   const [error, setError] = useState<string | null>(null);
+  const [submitting, setSubmitting] = useState(false);
 
-  const handleSubmit = (e: React.FormEvent<HTMLFormElement>) => {
+  const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
+    if (submitting) return;
     if (rating < 1) { setError(t.reviewForm.errPickRating); return; }
     if (!title.trim() || !content.trim()) { setError(t.reviewForm.errTitleContentRequired); return; }
     if (content.trim().length < 10) { setError(t.reviewForm.errContentTooShort); return; }
     setError(null);
-    onSubmit({ rating, title, content });
+    setSubmitting(true);
+    try {
+      await onSubmit({ rating, title, content });
+    } catch (err) {
+      setError(err instanceof Error ? err.message : t.common.errUnexpected);
+    } finally {
+      setSubmitting(false);
+    }
   };
 
   return (
@@ -118,7 +127,7 @@ function ReviewForm({ initial, onSubmit, onCancel }: ReviewFormProps) {
             <X size={14} /> {t.common.cancel}
           </button>
         )}
-        <button type="submit" className="btn btn-primary">
+        <button type="submit" className="btn btn-primary" disabled={submitting}>
           <Send size={14} /> {initial ? t.reviewForm.update : t.reviewForm.publish}
         </button>
       </div>
@@ -377,6 +386,7 @@ export default function MangaDetail() {
 
   const handleAddReview = async (data: { rating: number; title: string; content: string }) => {
     if (!user) { navigate('/let-go'); return; }
+    // Les erreurs remontent au formulaire (affichées sous le titre) au lieu d'être ignorées.
     await addReview({ id: user.id, name: user.name, role: (user.role ?? 'reader') as AuthorRole }, { mangaId: manga.id, ...data });
     setEditingReview(false);
     setRefreshKey((k) => k + 1);
@@ -392,14 +402,24 @@ export default function MangaDetail() {
   const handleDeleteReview = async () => {
     if (!user || !userReview) return;
     if (!window.confirm(t.reviewForm.deleteConfirm)) return;
-    await deleteReview(userReview.id, user.id);
+    try {
+      await deleteReview(userReview.id, user.id);
+    } catch (err) {
+      setActionError(err instanceof Error ? err.message : t.common.errUnexpected);
+      return;
+    }
     setEditingReview(false);
     setRefreshKey((k) => k + 1);
   };
 
   const handleToggleHelpful = async (reviewId: string) => {
     if (!user) { navigate('/let-go'); return; }
-    await toggleHelpful(reviewId, user.id);
+    try {
+      await toggleHelpful(reviewId, user.id);
+    } catch (err) {
+      setActionError(err instanceof Error ? err.message : t.common.errUnexpected);
+      return;
+    }
     setRefreshKey((k) => k + 1);
   };
 
@@ -463,7 +483,11 @@ export default function MangaDetail() {
 
           <div className="manga-hero-inner">
             <div className="manga-cover-frame">
-              <div className="manga-cover-art"><IconCmp size={72} /></div>
+              {manga.coverUrl ? (
+                <img className="cover-fill" src={manga.coverUrl} alt={manga.title} />
+              ) : (
+                <div className="manga-cover-art"><IconCmp size={72} /></div>
+              )}
               <span className={`manga-status status-${manga.status}`}>{manga.status}</span>
             </div>
 
@@ -559,6 +583,7 @@ export default function MangaDetail() {
                 return (
                   <li key={c.id} className={`manga-chapter-item ${isRead ? 'read' : ''}`}>
                     <Link to={`/manga/${manga.id}/read/${c.number}`} className="manga-chapter-link">
+                      {c.coverUrl && <img className="manga-chapter-thumb" src={c.coverUrl} alt="" loading="lazy" />}
                       <span className="manga-chapter-num">{t.common.chapterShort} {c.number}</span>
                       <span className="manga-chapter-title">{c.title}</span>
                       <span className="manga-chapter-meta">
