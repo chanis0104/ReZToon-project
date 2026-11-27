@@ -1,4 +1,4 @@
-﻿import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import {
   MessageCircle, Send, Heart, Trash2, Eye, EyeOff, AlertTriangle, X, Loader2,
 } from 'lucide-react';
@@ -34,6 +34,7 @@ export default function ChapterComments({ mangaId, chapterNumber }: Props) {
   const [showSpoilerIds, setShowSpoilerIds] = useState<Set<string>>(new Set());
   const [replyTo, setReplyTo] = useState<ChapterComment | null>(null);
   const [submitting, setSubmitting] = useState(false);
+  const [postError, setPostError] = useState<string | null>(null);
 
   useEffect(() => {
     let cancelled = false;
@@ -81,6 +82,7 @@ export default function ChapterComments({ mangaId, chapterNumber }: Props) {
     if (!user || !draft.trim() || submitting) return;
 
     setSubmitting(true);
+    setPostError(null);
     try {
       await addChapterComment(
         { id: user.id, name: user.name, photo: user.photo, role: user.role },
@@ -99,6 +101,7 @@ export default function ChapterComments({ mangaId, chapterNumber }: Props) {
       setRefreshKey((k) => k + 1);
     } catch (err) {
       console.error('Failed to post comment:', err);
+      setPostError(err instanceof Error ? err.message : t.common.errUnexpected);
     } finally {
       setSubmitting(false);
     }
@@ -258,6 +261,7 @@ export default function ChapterComments({ mangaId, chapterNumber }: Props) {
 
       {user ? (
         <form className="chapter-comments-composer" onSubmit={handleSubmit}>
+          {postError && <div className="form-message error" role="alert">{postError}</div>}
           {replyTo && (
             <div className="chapter-comments-reply-bar">
               <span>↩ {t.comments.reply} <strong>{replyTo.authorName}</strong></span>
