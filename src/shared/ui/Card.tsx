@@ -1,4 +1,4 @@
-﻿import { Info } from 'lucide-react';
+import { Info } from 'lucide-react';
 import { getIcon } from './Icon';
 // 👇 Correction du chemin d'import (remontée de 2 niveaux)
 import type { PopularCardData } from '../../config/types';
@@ -13,7 +13,11 @@ export default function PopularCard({ data, onClick }: CardProps) {
   return (
     <div className="card" data-genre={data.genre} onClick={onClick}>
       <div className="card-img-placeholder">
-        <IconCmp size={56} />
+        {data.coverUrl ? (
+          <img className="cover-fill" src={data.coverUrl} alt="" loading="lazy" />
+        ) : (
+          <IconCmp size={56} />
+        )}
       </div>
       <div className="card-body">
         <div className="card-text">
