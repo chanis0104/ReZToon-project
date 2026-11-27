@@ -14,7 +14,6 @@ export interface PopularCardData {
   sub: string;
   tag: string;
   icon: string;
-  /** Couverture facultative (image) ; sinon l'icône est affichée. */
   coverUrl?: string;
   genre: string;
 }
