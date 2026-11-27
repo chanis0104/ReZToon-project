@@ -1,4 +1,4 @@
-﻿import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
   ChevronLeft, ChevronRight, Calendar, Play, Bookmark, BookmarkCheck,
@@ -26,6 +26,7 @@ type DayFilter = 'all' | WeekDay;
 
 interface CardMeta {
   id: string;
+  coverUrl?: string;
   description: string;
 }
 
@@ -82,8 +83,11 @@ export default function WeeklyReleases() {
     const map = new Map<string, CardMeta>();
     releases.forEach((r) => {
       const manga = getMangaForCard({ id: r.mangaId, title: r.title, genre: r.genre });
+      // Couverture du chapitre en priorité, sinon celle de la série.
+      const chapterCover = manga?.chapters?.find((c) => c.number === r.chapterNumber)?.coverUrl;
       map.set(r.id, {
         id: r.id,
+        coverUrl: chapterCover ?? manga?.coverUrl,
         description:
           manga?.description ??
           `A ${r.genre} story, ${r.tag.toLowerCase()}. Chapter ${r.chapter} arrives ${r.day}.`,
@@ -244,7 +248,11 @@ export default function WeeklyReleases() {
             return (
               <article key={release.id} className={`annonce-card weekly-card day-${dayClass}`}>
                 <div className="annonce-cover">
-                  <IconCmp size={44} />
+                  {cardMeta?.coverUrl ? (
+                    <img className="cover-fill" src={cardMeta.coverUrl} alt="" loading="lazy" />
+                  ) : (
+                    <IconCmp size={44} />
+                  )}
                   <span className="annonce-genre">{release.genre}</span>
                   <span className="weekly-chapter">{t.common.chapterShort} {release.chapter}</span>
                 </div>
