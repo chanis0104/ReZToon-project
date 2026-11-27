@@ -23,6 +23,7 @@ import '../styles/fixes-p0.css';
 import '../styles/mobile/index.css';
 import '../styles/tablet.css';
 import '../styles/supervisor-missing-style.css';
+import '../styles/cover-style.css';
 
 // En production uniquement : on masque les logs de la console du navigateur.
 // En développement on les garde, sinon les vrais bugs deviennent invisibles.
