@@ -14,6 +14,8 @@ export interface PopularCardData {
   sub: string;
   tag: string;
   icon: string;
+  /** Couverture facultative (image) ; sinon l'icône est affichée. */
+  coverUrl?: string;
   genre: string;
 }
 
@@ -23,6 +25,7 @@ export interface LikedBookData {
   sub: string;
   tag: string;
   icon: string;
+  coverUrl?: string;
   genre: string;
   likes: number;
   rank: number;
