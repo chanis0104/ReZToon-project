@@ -1,4 +1,4 @@
-﻿import { supabase } from '../lib/supabase';
+import { supabase } from '../lib/supabase';
 
 export type MangaStatus = 'ongoing' | 'completed' | 'hiatus';
 
@@ -9,6 +9,8 @@ export interface ChapterMeta {
   pages: number;
   publishedAt: string;
   pageUrls?: string[];
+  /** Page de couverture facultative du chapitre. */
+  coverUrl?: string;
 }
 
 export interface Manga {
@@ -18,6 +20,8 @@ export interface Manga {
   authorId: string;
   author: string;
   cover: string;
+  /** Image de couverture facultative (sinon l'icône `cover` est utilisée). */
+  coverUrl?: string;
   genre: string;
   tag: string;
   status: MangaStatus;
@@ -46,6 +50,7 @@ function mapRowToManga(row: any): Manga {
     authorId: row.author_id,
     author: row.author_name,
     cover: row.cover,
+    coverUrl: row.cover_url || undefined,
     genre: row.genre,
     tag: row.tag,
     status: row.status as MangaStatus,
@@ -55,6 +60,8 @@ function mapRowToManga(row: any): Manga {
     reads: row.reads || 0,
     likes: row.likes || 0,
     chapters: (row.chapters || [])
+      // Les brouillons (visibles de leur auteur via RLS) ne doivent pas apparaître côté lecteur.
+      .filter((c: any) => c.status !== 'draft')
       .map((c: any) => ({
         id: c.id,
         number: c.number,
@@ -62,6 +69,7 @@ function mapRowToManga(row: any): Manga {
         pages: c.pages,
         publishedAt: c.published_at,
         pageUrls: Array.isArray(c.page_urls) ? c.page_urls : [],
+        coverUrl: c.cover_url || undefined,
       }))
       .sort((a: any, b: any) => a.number - b.number),
   };
@@ -78,7 +86,7 @@ export async function getAllMangas(options: { throwOnError?: boolean } = {}): Pr
     try {
       const { data, error } = await supabase
         .from('mangas')
-        .select('*, chapters (id, number, title, pages, published_at, page_urls)')
+        .select('*, chapters (*)')
         .order('created_at', { ascending: false });
 
       if (error) console.error('[mangaService] getAllMangas a échoué :', error.message, error);
@@ -115,7 +123,7 @@ export async function getMangasByIds(ids: string[]): Promise<Manga[]> {
   if (ids.length === 0) return [];
   const { data, error } = await supabase
     .from('mangas')
-    .select('*, chapters (id, number, title, pages, published_at, page_urls)')
+    .select('*, chapters (*)')
     .in('id', ids);
 
   if (error || !data) return [];
@@ -129,7 +137,7 @@ export async function searchMangas(query: string): Promise<Manga[]> {
   const safeQ = q.replace(/[(),]/g, '');
   const { data, error } = await supabase
     .from('mangas')
-    .select('*, chapters (id, number, title, pages, published_at, page_urls)')
+    .select('*, chapters (*)')
     .or(`title.ilike.%${safeQ}%,author_name.ilike.%${safeQ}%,genre.ilike.%${safeQ}%`)
     .order('reads', { ascending: false })
     .limit(20);
@@ -155,6 +163,7 @@ export async function getChaptersForManga(id: string): Promise<ChapterMeta[]> {
     pages: c.pages,
     publishedAt: c.published_at,
     pageUrls: Array.isArray(c.page_urls) ? c.page_urls : [],
+    coverUrl: c.cover_url || undefined,
   }));
 }
 
