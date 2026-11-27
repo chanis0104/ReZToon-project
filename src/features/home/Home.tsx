@@ -1,4 +1,4 @@
-﻿import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { Users, Home as HomeIcon, Trophy, BookOpen, Loader2 } from 'lucide-react';
 import ParticlesCanvas from '../../shared/effects/ParticlesCanvas';
@@ -134,6 +134,7 @@ export default function Home() {
           description: m.description || '',
           stats,
           image: FEATURED_IMAGES[index % FEATURED_IMAGES.length],
+          coverUrl: m.coverUrl,
           rank: entry.rank,
           allTime: !entry.hasActivity,
         };
@@ -147,6 +148,7 @@ export default function Home() {
     sub: m.author,
     tag: m.tag || 'Series',
     icon: m.cover,
+    coverUrl: m.coverUrl,
     genre: m.genre,
   }));
 
@@ -156,6 +158,7 @@ export default function Home() {
     sub: m.author,
     tag: m.tag || 'Series',
     icon: m.cover,
+    coverUrl: m.coverUrl,
     genre: m.genre,
     likes: m.likes,
     rank: i + 1,
