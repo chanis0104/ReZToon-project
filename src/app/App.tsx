@@ -28,6 +28,7 @@ const CreatorLayout = lazy(() => import('../features/creator/CreatorLayout'));
 const CreatorDashboard = lazy(() => import('../features/creator/CreatorDashboard'));
 const NewChapter = lazy(() => import('../features/creator/NewChapter'));
 const MySeries = lazy(() => import('../features/creator/MySeries'));
+const MyChapters = lazy(() => import('../features/creator/MyChapters'));
 const Analytics = lazy(() => import('../features/creator/Analytics'));
 
 const SupervisorHome = lazy(() => import('../features/supervisor/pages/Home'));
@@ -88,6 +89,7 @@ export default function App() {
               <Route index element={<CreatorDashboard />} />
               <Route path="new" element={<NewChapter />} />
               <Route path="series" element={<MySeries />} />
+              <Route path="chapters" element={<MyChapters />} />
               <Route path="analytics" element={<Analytics />} />
             </Route>
           </Route>
